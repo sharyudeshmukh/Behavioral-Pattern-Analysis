@@ -1,0 +1,761 @@
+---
+title: "Project-2"
+author: "Karan Gulur Muralidhar"
+date: "11/26/2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r  warning=FALSE, message=FALSE}
+library(tidyverse)
+library(dplyr)
+library(reshape2)
+library(purrr)
+library(modelr)
+```
+
+## Loading Data
+```{r  warning=FALSE, message=FALSE}
+survey_columns_data <- read_csv("/Users/karangm/Documents/Semester-1/DataProcessing/project/columns.csv")
+survey_data <- read_csv("/Users/karangm/Documents/Semester-1/DataProcessing/project/responses.csv")
+```
+
+## Missing Values
+```{r  warning=FALSE, message=FALSE}
+mode <- function(x, na.rm = FALSE) {
+  if(na.rm){
+    x = x[!is.na(x)]
+  }
+
+  ux <- unique(x)
+  return(ux[which.max(tabulate(match(x, ux)))])
+}
+
+get_missing_value_stats <- function(data){
+  column_names <- colnames(survey_data)
+  na_vector <- numeric(length=ncol(survey_data))
+   sum(is.na(survey_data))
+  for (i in 1:ncol(survey_data)){
+    na_vector[i] <- sum(is.na(survey_data[i]))
+  }
+  na_df <- data.frame(column_names, na_vector)
+  na_df
+}
+
+handle_missing_values <- function(data){
+  data_na_handled <- data %>% 
+                       mutate_all(~ifelse(is.na(.), median(., na.rm = TRUE), .)) %>%
+                       mutate_all(~ifelse(is.na(.), mode(.), .))
+}
+```
+
+## Transformation from 5 point scale to 3 point scale
+```{r  warning=FALSE, message=FALSE}
+data_transform <- function(survey_data){
+  f1 <- function(column) {
+    sapply(column, f2)
+  }
+  f2 <- function(value){
+    if(is.numeric(value)){
+      if(is.na(value)){
+        value <- NA
+      }else if (value > 3){
+        value <- 3
+      } else if (value == 3){
+        value <- 2
+      } else if (value < 3){
+        value <- 1
+      }
+    }
+    return(value)
+  }
+  r <- map_dfr(survey_data, f1)
+}
+
+data_transform <- function(survey_data){
+  f1 <- function(column) {
+    sapply(column, f2)
+  }
+  f2 <- function(value){
+    if(is.numeric(value)){
+      if(is.na(value)){
+        value <- NA
+      }else if (value < 3){
+        value <- 1
+      } else if (value == 3){
+        value <- 2
+      } else if (value > 3){
+        value <- 3
+      }
+    }
+    return(value)
+  }
+  r <- map_dfr(survey_data, f1)
+}
+```
+
+## Question 1 - Plotting tile plot and trying to identify corelation within certain categories
+
+## Music Preferences
+```{r  warning=FALSE, message=FALSE}
+music_corelation <- function(data){
+  data %>%
+    dplyr::select(Dance:Opera) %>%
+    cor(use="complete.obs", method="spearman") %>%
+    melt()
+}
+music_corelation_plot <- function(data){
+  data %>%
+    dplyr::select(Dance:Opera) %>%
+    cor(use="complete.obs", method="spearman") %>%
+    melt() %>%
+    ggplot(aes(x=Var1, y=Var2, fill=value)) + 
+      geom_tile() +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+}
+```
+
+
+```{r  warning=FALSE, message=FALSE}
+## Music Corelation
+music_corelation_top_five <- get_top_five(music_corelation(survey_data_transform), 5)
+music_corelation_plot(survey_data)
+music_corelation_plot(survey_data_transform)
+```
+
+## Movie Preferences
+```{r  warning=FALSE, message=FALSE}
+movie_corelation <- function(data){
+  data %>%
+    dplyr::select(Horror:Action) %>%
+    cor(use="complete.obs", method="spearman") %>%
+    melt()
+}
+movie_corelation_plot <- function(data){
+  data %>%
+    dplyr::select(Horror:Action) %>%
+    cor(use="complete.obs", method="spearman") %>%
+    melt() %>%
+    ggplot(aes(x=Var1, y=Var2, fill=value)) + 
+      geom_tile() +
+      scale_colour_gradient2() +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+}
+```
+
+## Phobia
+```{r  warning=FALSE, message=FALSE}
+phobia_corelation <- function(data){
+  data %>%
+    dplyr::select(Flying:`Fear of public speaking`) %>%
+    cor(use="complete.obs", method="spearman") %>%
+    melt()
+}
+phobia_corelation_plot <- function(data){
+  data %>%
+    dplyr::select(Flying:`Fear of public speaking`) %>%
+    cor(use="complete.obs", method="spearman") %>%
+    melt() %>%
+    ggplot(aes(x=Var1, y=Var2, fill=value)) + 
+      geom_tile() +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+}
+```
+
+## Hobbies & Interests
+```{r  warning=FALSE, message=FALSE}
+hobbies_interests_corelation <- function(data){
+  data %>%
+    dplyr::select(History:Pets) %>%
+    cor(use="complete.obs", method="spearman") %>%
+    melt()
+}
+hobbies_interests_corelation_plot <- function(data){
+  data %>%
+    dplyr::select(History:Pets) %>%
+    cor(use="complete.obs", method="spearman") %>%
+    melt() %>%
+    ggplot(aes(x=Var1, y=Var2, fill=value)) + 
+      geom_tile() +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+}
+```
+
+## PERSONALITY TRAITS, VIEWS ON LIFE & OPINIONS
+```{r  warning=FALSE, message=FALSE}
+personality_traits_corelation <- function(data){
+  data %>%
+    dplyr::select(`Daily events`:`Number of friends`, `Waiting`:`Questionnaires or polls`) %>%
+    cor(use="complete.obs", method="spearman") %>%
+    melt()
+}
+personality_traits_corelation_plot <- function(data){
+  data %>%
+    dplyr::select(`Daily events`:`Number of friends`, `Waiting`:`Questionnaires or polls`) %>%
+    cor(use="complete.obs", method="spearman") %>%
+    melt() %>%
+    ggplot(aes(x=Var1, y=Var2, fill=value)) + 
+      geom_tile() +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+}
+```
+
+## Spending Habits
+```{r  warning=FALSE, message=FALSE}
+spending_habits_corelation <- function(data){
+  data %>%
+    dplyr::select(`Shopping centres`:`Spending on healthy eating`) %>%
+    cor(use="complete.obs", method="spearman") %>%
+    melt()
+}
+spending_habits_corelation_plot <- function(data){
+  data %>%
+    dplyr::select(`Shopping centres`:`Spending on healthy eating`) %>%
+    cor(use="complete.obs", method="spearman") %>%
+    melt() %>%
+    ggplot(aes(x=Var1, y=Var2, fill=value)) + 
+      geom_tile() +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+}
+```
+
+## Utils
+```{r  warning=FALSE, message=FALSE}
+get_top_five <- function(sample_vector, top){
+   top*2
+   sample_vector <- sample_vector %>%
+                      arrange(desc(value)) %>%
+                      filter(Var1!=Var2) %>%
+                      head(top*2)
+  ind <- seq(1, nrow(sample_vector), by=2)
+  sample_vector[-ind, ]
+}
+```
+
+```{r  warning=FALSE, message=FALSE}
+missing_value_stats <- get_missing_value_stats(survey_data)
+survey_data_missing_value_handled <- handle_missing_values(survey_data)
+
+survey_data_transform <- data_transform(survey_data_missing_value_handled)
+survey_data_transform$Age <- survey_data_missing_value_handled$Age
+survey_data_transform$Height <- survey_data_missing_value_handled$Height
+survey_data_transform$Weight <- survey_data_missing_value_handled$Weight
+
+
+## Music Corelation
+music_corelation_top_five <- get_top_five(music_corelation(survey_data_transform), 5)
+music_corelation_plot(survey_data)
+music_corelation_plot(survey_data_transform)
+
+## Movie Corelation
+movie_corelation_top_five <- get_top_five(movie_corelation(survey_data_transform), 5)
+movie_corelation_plot(survey_data)
+movie_corelation_plot(survey_data_transform)
+
+## Phobia Corelation
+phobia_corelation_top_five <- get_top_five(phobia_corelation(survey_data_transform), 5)
+phobia_corelation_plot(survey_data)
+phobia_corelation_plot(survey_data_transform)
+
+## Hobbies & Interests Corelation
+hobbies_interests_corelation_top_five <- get_top_five(hobbies_interests_corelation(survey_data_transform), 5)
+hobbies_interests_corelation_plot(survey_data)
+hobbies_interests_corelation_plot(survey_data_transform)
+
+## Spending Habits Corelation
+spending_habits_corelation_top_five <- get_top_five(spending_habits_corelation(survey_data_transform), 5)
+spending_habits_corelation_plot(survey_data)
+spending_habits_corelation_plot(survey_data_transform)
+
+## Personality Traits Corelation
+personality_traits_corelation_top_five <- get_top_five(personality_traits_corelation(survey_data_transform), 5)
+personality_traits_corelation_plot(survey_data)
+personality_traits_corelation_plot(survey_data_transform)
+```
+
+## Question 2 - Can we identify preferences in movies, music, phobia which are predictive of gender (identify the factors)
+
+## Music
+
+## Music Preferences vs Gender
+```{r  warning=FALSE, message=FALSE}
+  survey_data_music_gender <- survey_data_transform %>%
+                                select(Dance:Opera, Gender) %>%
+                                filter(!is.na(Gender))
+  for (i in 1:ncol(survey_data_music_gender)){
+    print(ggplot(survey_data_music_gender, aes(x=survey_data_music_gender[[i]],  y=..prop.., fill=Gender)) + geom_bar(position = "dodge") + xlab(colnames(survey_data_music_gender[i])))
+  }
+  
+## In music type
+##   - Musical - Male dont like classical, cant say anything about females.
+##   - Latino - Female like more, male dont like it
+##   - Both male and female dislike
+##            - Folk, Country, Metal or HardRock, Punk, Techno-Trance & Opera
+##   - Bot male and femal like
+##            - Rock 
+```
+
+## Music Preferences vs Dexterity
+```{r  warning=FALSE, message=FALSE}
+  survey_data_music_dexterity <- survey_data_transform %>%
+                                  select(Dance:Opera, `Left - right handed`) %>%
+                                  filter(!is.na(`Left - right handed`))
+  for (i in 1:ncol(survey_data_music_dexterity)){
+    print(ggplot(survey_data_music_dexterity, aes(x=survey_data_music_dexterity[[i]],  y=..prop.., fill=`Left - right handed`)) + geom_bar(position = "dodge") + xlab(colnames(survey_data_music_dexterity[i])))
+  }
+## In music type
+##  - Both left handed and right handed dislike
+##        - Folk, Country, Metal or Hard Rock, Punk, Techno-Terrance, Opera
+##  - Both left handed and right handed like
+##        - Rock
+```
+
+## Music Preferences vs Village - town
+```{r  warning=FALSE, message=FALSE}
+  survey_data_music_place <- survey_data_transform %>%
+                              select(Dance:Opera, `Village - town`) %>%
+                              filter(!is.na(`Village - town`))
+  for (i in 1:ncol(survey_data_music_place)){
+    print(ggplot(survey_data_music_place, aes(x=survey_data_music_place[[i]],  y=..prop.., fill=`Village - town`)) + geom_bar(position = "dodge") + xlab(colnames(survey_data_music_place[i])))
+  }
+## In music type
+##  - Both people from village and town dislike
+##        - Folk, Country, Metal or Hard Rock, Punk, Techno-Terrance, Opera
+##  - Both left handed and right handed like
+##        - Pop, Rock
+```
+
+## Music Preferences vs Age Range
+```{r  warning=FALSE, message=FALSE}
+  survey_data_music_agerange <- survey_data_transform %>%
+                                  select(Dance:Opera, Age) %>%
+                                  mutate(AgeRange = lapply(Age, get_age_range)) %>%
+                                  mutate(AgeRange = unlist(AgeRange)) %>%
+                                  filter(!is.na(AgeRange))
+  for (i in 1:ncol(survey_data_music_agerange)){
+    print(ggplot(survey_data_music_agerange, aes(x=survey_data_music_agerange[[i]],  y=..prop.., fill=`AgeRange`)) + geom_bar(position = "dodge") + xlab(colnames(survey_data_music_agerange[i])))
+  }
+## In music type
+##  - All categories of age dislike
+##        - Folk, Country, Metal or Hard Rock, Punk, Techno-Terrance, Opera
+##  - All categories of age like
+##        - Pop, Rock
+```
+
+## Movies
+
+## Movie Preferences vs Gender
+```{r  warning=FALSE, message=FALSE}
+  survey_data_movie_gender <- survey_data %>%
+                                select(Horror:Action, Gender) %>%
+                                filter(!is.na(Gender))
+  for (i in 1:ncol(survey_data_movie_gender)){
+    print(ggplot(survey_data_movie_gender, aes(x=survey_data_movie_gender[[i]],  y=..prop.., fill=Gender)) + geom_bar(position = "dodge") + xlab(colnames(survey_data_movie_gender[i])))
+  }
+```
+
+## Movie Preferences vs Dexterity
+```{r  warning=FALSE, message=FALSE}
+  survey_data_movie_dexterity <- survey_data_transform %>%
+                                select(Horror:Action, `Left - right handed`) %>%
+                                filter(!is.na(`Left - right handed`))
+  for (i in 1:ncol(survey_data_movie_dexterity)){
+    print(ggplot(survey_data_movie_dexterity, aes(x=survey_data_movie_dexterity[[i]],  y=..prop.., fill=`Left - right handed`)) + geom_bar(position = "dodge") + xlab(colnames(survey_data_movie_dexterity[i])))
+  }
+```
+
+## Movie Preferences vs Village - town
+```{r  warning=FALSE, message=FALSE}
+  survey_data_movie_place <- survey_data_transform %>%
+                                select(Horror:Action, `Village - town`) %>%
+                                filter(!is.na(`Village - town`))
+  for (i in 1:ncol(survey_data_movie_place)){
+    print(ggplot(survey_data_movie_place, aes(x=survey_data_movie_place[[i]],  y=..prop.., fill=`Village - town`)) + geom_bar(position = "dodge") + xlab(colnames(survey_data_movie_place[i])))
+  }
+```
+
+## Movie Preferences vs Age
+```{r  warning=FALSE, message=FALSE}
+  survey_data_movie_agerange <- survey_data %>%
+                                  select(Horror:Action, Age) %>%
+                                  mutate(AgeRange = lapply(Age, get_age_range)) %>%
+                                  mutate(AgeRange = unlist(AgeRange)) %>%
+                                  filter(!is.na(AgeRange))
+  for (i in 1:ncol(survey_data_movie_agerange)){
+    print(ggplot(survey_data_movie_agerange, aes(x=survey_data_movie_agerange[[i]],  y=..prop.., fill=AgeRange)) + geom_bar(position = "dodge") + xlab(colnames(survey_data_movie_agerange[i])))
+  }
+```
+
+## Phobia
+
+## Phobia vs Gender
+```{r  warning=FALSE, message=FALSE}
+  survey_data_phobia_gender <- survey_data %>%
+                                select(Flying:`Fear of public speaking`, Gender) %>%
+                                filter(!is.na(Gender))
+  for (i in 1:ncol(survey_data_phobia_gender)){
+    print(ggplot(survey_data_phobia_gender, aes(x=survey_data_phobia_gender[[i]],  y=..prop.., fill=Gender)) + geom_bar(position = "dodge") + xlab(colnames(survey_data_phobia_gender[i])))
+  }
+```
+
+## Phobia vs Dexterity
+```{r  warning=FALSE, message=FALSE}
+  survey_data_phobia_dexterity <- survey_data_transform %>%
+                                    select(Flying:`Fear of public speaking`, `Left - right handed`)  %>%
+                                    filter(!is.na(`Left - right handed`))
+  for (i in 1:ncol(survey_data_phobia_dexterity)){
+    print(ggplot(survey_data_phobia_dexterity, aes(x=survey_data_phobia_dexterity[[i]],  y=..prop.., fill=`Left - right handed`)) + geom_bar(position = "dodge") + xlab(colnames(survey_data_phobia_dexterity[i])))
+  }
+```
+
+## Phobia vs Village - town
+```{r  warning=FALSE, message=FALSE}
+  survey_data_phobia_place <- survey_data_transform %>%
+                                    select(Flying:`Fear of public speaking`, `Village - town`)  %>%
+                                    filter(!is.na(`Village - town`))
+  for (i in 1:ncol(survey_data_phobia_place)){
+    print(ggplot(survey_data_phobia_place, aes(x=survey_data_phobia_place[[i]],  y=..prop.., fill=`Village - town`)) + geom_bar(position = "dodge") + xlab(colnames(survey_data_phobia_place[i])))
+  }
+```
+
+## Phobia vs Age
+```{r  warning=FALSE, message=FALSE}
+  survey_data_phobia_agerange <- survey_data %>%
+                                  select(Flying:`Fear of public speaking`,  Age) %>%
+                                  mutate(AgeRange = lapply(Age, get_age_range)) %>%
+                                  mutate(AgeRange = unlist(AgeRange)) %>%
+                                  filter(!is.na(AgeRange))
+  for (i in 1:ncol(survey_data_phobia_agerange)){
+    print(ggplot(survey_data_phobia_agerange, aes(x=survey_data_phobia_agerange[[i]],  y=..prop.., fill=`AgeRange`)) + geom_bar(position = "dodge") + xlab(colnames(survey_data_phobia_agerange[i])))
+  }
+```
+
+## Custom Functions
+```{r  warning=FALSE, message=FALSE}
+get_age_range <- function(age){
+  print(age)
+  if(is.na(age)){
+    return(NA)
+  }else if(age<21){
+    return("Teenager")
+  }else if( (age>20) & (age<26)){
+    return("Young-20")
+  }else{
+    return("Late-20")
+  } 
+}
+```
+
+## Question 3 - What are the factors which contributes to happiness of a person?
+
+## Happines
+
+## Happiness vs Music Preferences
+```{r  warning=FALSE, message=FALSE}
+  survey_data_happiness_music <- survey_data_transform %>%
+                                select(Music:Opera, `Happiness in life`) %>%
+                                filter(!is.na(`Happiness in life`))
+  for (i in 1:ncol(survey_data_happiness_music)){
+    print(ggplot(survey_data_happiness_music, aes(x=`Happiness in life`,  y=..prop..,  fill=factor(survey_data_happiness_music[[i]]))) + geom_bar(position = "dodge") + guides(fill=guide_legend(colnames(survey_data_happiness_music[i]))))
+  }
+```
+
+## Happiness vs Movie Preferences
+```{r  warning=FALSE, message=FALSE}
+  survey_data_happiness_movie <- survey_data_transform %>%
+                                select(Movies:Action, `Happiness in life`) %>%
+                                filter(!is.na(`Happiness in life`))
+  for (i in 1:ncol(survey_data_happiness_movie)){
+    print(ggplot(survey_data_happiness_movie, aes(x=`Happiness in life`,  y=..prop..,  fill=factor(survey_data_happiness_movie[[i]]))) + geom_bar(position = "dodge") + guides(fill=guide_legend(colnames(survey_data_happiness_movie[i]))))
+  }
+```
+
+## Happiness vs Phobia
+```{r  warning=FALSE, message=FALSE}
+survey_data_happiness_phobia <- survey_data_transform %>%
+                                select(Flying:`Fear of public speaking`, `Happiness in life`) %>%
+                                filter(!is.na(`Happiness in life`))
+  for (i in 1:ncol(survey_data_happiness_phobia)){
+    print(ggplot(survey_data_happiness_phobia, aes(x=`Happiness in life`,  y=..prop..,  fill=factor(survey_data_happiness_phobia[[i]]))) + geom_bar(position = "dodge") + guides(fill=guide_legend(colnames(survey_data_happiness_phobia[i]))))
+  }
+```
+
+## Happiness vs Hobbies & Interests
+```{r  warning=FALSE, message=FALSE}
+survey_data_happiness_hobbies <- survey_data_transform %>%
+                                  select(History:Pets, `Happiness in life`) %>%
+                                  filter(!is.na(`Happiness in life`))
+  for (i in 1:ncol(survey_data_happiness_hobbies)){
+    print(ggplot(survey_data_happiness_hobbies, aes(x=`Happiness in life`,  y=..prop..,  fill=factor(survey_data_happiness_hobbies[[i]]))) + geom_bar(position = "dodge") + guides(fill=guide_legend(colnames(survey_data_happiness_hobbies[i]))))
+  }
+```
+
+## Happiness vs Health Habits
+```{r  warning=FALSE, message=FALSE}
+survey_data_happiness_health <- survey_data_transform %>%
+                                  select(Smoking:`Healthy eating`, `Happiness in life`) %>%
+                                  filter(!is.na(`Happiness in life`))
+  for (i in 1:ncol(survey_data_happiness_health)){
+    print(ggplot(survey_data_happiness_health, aes(x=`Happiness in life`,  y=..prop..,  fill=factor(survey_data_happiness_health[[i]]))) + geom_bar(position = "dodge") + guides(fill=guide_legend(colnames(survey_data_happiness_health[i]))))
+  }
+```
+
+## Happiness vs Personality Traits, Views on life & Opinions
+```{r  warning=FALSE, message=FALSE}
+survey_data_happiness_personality <- survey_data_transform %>%
+                                      select(`Daily events`:`Internet usage`, `Happiness in life`) %>%
+                                      filter(!is.na(`Happiness in life`))
+  for (i in 1:ncol(survey_data_happiness_personality)){
+    print(ggplot(survey_data_happiness_personality, aes(x=`Happiness in life`,  y=..prop..,  fill=factor(survey_data_happiness_personality[[i]]))) + geom_bar(position = "dodge") + guides(fill=guide_legend(colnames(survey_data_happiness_personality[i]))))
+  }
+```
+
+## Happiness vs Spending Habits
+```{r  warning=FALSE, message=FALSE}
+survey_data_happiness_spending <- survey_data_transform %>%
+                                    select(`Finances`:`Spending on healthy eating`, `Happiness in life`) %>%
+                                    filter(!is.na(`Happiness in life`))
+  for (i in 1:ncol(survey_data_happiness_spending)){
+    print(ggplot(survey_data_happiness_spending, aes(x=`Happiness in life`,  y=..prop..,  fill=factor(survey_data_happiness_spending[[i]]))) + geom_bar(position = "dodge") + guides(fill=guide_legend(colnames(survey_data_happiness_spending[i]))))
+  }
+```
+
+## Happiness vs Demographics
+```{r  warning=FALSE, message=FALSE}
+survey_data_happiness_demographics <- survey_data_transform %>%
+                                        select(`Number of siblings`:`House - block of flats`, `Happiness in life`) %>%
+                                        filter(!is.na(`Happiness in life`))
+  for (i in 1:ncol(survey_data_happiness_demographics)){
+   print(ggplot(survey_data_happiness_demographics, aes(x=`Happiness in life`,  y=..prop..,  fill=factor(survey_data_happiness_demographics[[i]]))) + geom_bar(position = "dodge") + guides(fill=guide_legend(colnames(survey_data_happiness_demographics[i]))))
+  }
+```
+
+## Happiness vs Age
+```{r  warning=FALSE, message=FALSE}
+ggplot(survey_data_transform, aes(x=factor(`Happiness in life`),  y=Age)) + geom_boxplot()
+ggplot(survey_data_transform, aes(x=factor(`Happiness in life`),  y=Height)) + geom_boxplot()
+ggplot(survey_data_transform, aes(x=factor(`Happiness in life`),  y=Weight)) + geom_boxplot()
+```
+
+```{r  warning=FALSE, message=FALSE}
+if(!require(coin)){
+  install.packages("coin")
+}
+if(!require(rcompanion)){
+  install.packages("rcompanion")
+}
+library(coin)
+```
+
+```{r  warning=FALSE, message=FALSE}
+linear_to_linear_association <- function(survey_data){
+  column_names <- colnames(survey_data)
+  number_of_columns <- ncol(survey_data)
+  happiness_column <-  which( colnames(survey_data)=="Happiness in life" )
+  
+  explanatory_vector <- character(length=number_of_columns)
+  independent_vector <- character(length=number_of_columns)
+  lbl_pvector <- numeric(length=number_of_columns)
+  lbl_pvector_round <- numeric(length=number_of_columns)
+  chi_pvector <- numeric(length=number_of_columns)
+  chi_pvector_round <- numeric(length=number_of_columns)
+  
+  for (i in 1:number_of_columns){
+    x <- as.vector(survey_data[[column_names[i]]])
+    y <- as.vector(survey_data[[happiness_column]]) 
+  
+    explanatory_vector[i] <- column_names[i]
+    independent_vector[i] <- column_names[happiness_column]
+    
+    input <- table(x, y)
+    LxL = lbl_test(input)
+    lbl_pvector[i] <- LxL@distribution@pvalue(LxL@statistic@teststatistic)
+    lbl_pvector_round[i] <- round(LxL@distribution@pvalue(LxL@statistic@teststatistic),6)
+    ChiSq = chisq_test(input)
+    chi_pvector[i] <- ChiSq@distribution@pvalue(ChiSq@statistic@teststatistic)
+    chi_pvector_round[i] <- round(ChiSq@distribution@pvalue(ChiSq@statistic@teststatistic),6)
+  }
+  linear_to_linear_association_result <- data.frame(explanatory_vector, independent_vector, lbl_pvector, lbl_pvector_round, chi_pvector, chi_pvector_round)
+  return(linear_to_linear_association_result)
+}
+```
+
+
+## Happiness - potential predictor variables.
+```{r  warning=FALSE, message=FALSE}
+
+happiness_potential_predictor_df <- data.frame(survey_data_transform$`Fun with friends`, survey_data_transform$Loneliness, survey_data_transform$`Changing the past`, survey_data_transform$Dreams, survey_data_transform$`Number of friends`, survey_data_transform$`Mood swings`, survey_data_transform$Personality, survey_data_transform$`Energy levels`, survey_data_transform$`Happiness in life`)
+
+names(happiness_potential_predictor_df) <- c("Fun with friends", "Loneliness", "Changing the past", "Dreams", "Number of friends", "Mood swings", "Personality", "Energy levels", "Happiness in life")
+
+## EDA
+for (i in 1:ncol(happiness_potential_predictor_df)){
+    print(ggplot(happiness_potential_predictor_df, aes(x=happiness_potential_predictor_df$`Happiness in life`,  y=..prop..,  fill=factor(happiness_potential_predictor_df[[i]]))) + geom_bar(position = "dodge") + xlab("Happiness in life") + guides(fill=guide_legend(colnames(happiness_potential_predictor_df[i]))))
+}
+
+## Positive Trends - "Personality", "Energy levels", "Fun with friends", "Number of friends", "Dreams"
+## Negative Trends - "Loneliness", "Changing the past",   "Mood swings"
+
+rename_values <- function(value) {
+  if (value == 3){
+    value <- "AGREE"
+  } else if (value == 2){
+    value <- "NEUTRAL"
+  } else if (value == 1) {
+    value <- "DISAGREE"
+  }
+  return(value)
+}
+
+Fun_with_friends <- as.factor(survey_data_transform$`Fun with friends`)
+Loneliness <- as.factor(survey_data_transform$Loneliness)
+Changing_the_past <- as.factor(survey_data_transform$`Changing the past`)
+Dream <- as.factor(survey_data_transform$Dreams)
+Number_of_Friends <- as.factor(survey_data_transform$`Number of friends`)
+Mood_swings <- as.factor(survey_data_transform$`Mood swings`)
+Personality <- as.factor(survey_data_transform$Personality)
+Energy_levels <- as.factor(survey_data_transform$`Energy levels`) 
+Happiness_in_life <- as.factor(survey_data_transform$`Happiness in life`)
+
+## Happiness-DF
+happiness_df <- data.frame(Fun_with_friends, Loneliness, Changing_the_past, Dream, Number_of_Friends, Mood_swings, Personality, Energy_levels, Happiness_in_life)
+names(happiness_df) <- c("Fun with friends", "Loneliness", "Changing the past", "Dreams", "Number of friends", "Mood swings", "Personality", "Energy levels", "Happiness in life")
+linear_to_linear_association(happiness_df)
+
+## Modelling
+library(MASS)
+
+## Complete dataset
+model <- polr(formula = `Happiness in life` ~ `Personality` + `Energy levels` + `Fun with friends` + `Number of friends` + `Dreams` + Loneliness + `Changing the past`, data = happiness_df, Hess = T)
+pred_test <- predict(model, happiness_df)
+mean(pred_test == happiness_df$`Happiness in life`, na.rm=TRUE) # accuracy
+
+## Partition dataset
+happiness_df_part <- resample_partition(happiness_df, c(train = 0.6, test = 0.4))
+happiness_df_part_train <- as_tibble(happiness_df_part$train)
+happiness_df_part_test  <- as_tibble(happiness_df_part$test)
+
+model <- polr(formula = `Happiness in life` ~ `Personality` + `Energy levels` + `Fun with friends` + `Number of friends` + `Dreams` + Loneliness + `Changing the past`, data = happiness_df_part_train, Hess = T)
+
+pred_train <- predict(model, happiness_df_part_train)
+mean(pred_train == happiness_df_part_train$`Happiness in life`, na.rm=TRUE) # accuracy
+
+pred_test <- predict(model, happiness_df_part_test)
+mean(pred_test == happiness_df_part_test$`Happiness in life`, na.rm=TRUE) # accuracy
+```
+
+
+```{r  warning=FALSE, message=FALSE}
+##
+coeffs <- coef(summary(model))
+p <- pnorm(abs(coeffs[, "t value"]), lower.tail = FALSE) * 2
+cbind(coeffs, "p value" = round(p,3))
+```
+
+
+```{r  warning=FALSE, message=FALSE}
+spearman_coeeficient <- function(survey_data){
+  column_names <- colnames(survey_data)
+  number_of_columns <- ncol(survey_data)
+  happiness_column <-  which( colnames(survey_data)=="Happiness in life" )
+  
+  explanatory_vector <- character(length=number_of_columns)
+  independent_vector <- character(length=number_of_columns)
+  corelation_vector <- numeric(length=number_of_columns)
+  for (i in 1:number_of_columns){
+    x <- as.vector(survey_data[[column_names[i]]])
+    y <- as.vector(survey_data[[happiness_column]])
+    explanatory_vector[i] <- column_names[i]
+    independent_vector[i] <- column_names[happiness_column]
+    if( (class(x) == "integer") ){
+      corelation_vector[i] <- cor(x, y, use="complete.obs", method="spearman")
+    }else{
+      corelation_vector[i] <- NA
+    }
+  }
+  spearman_result <- data.frame(explanatory_vector, independent_vector, corelation_vector)
+  return(spearman_result)
+}
+```
+
+
+```{r  warning=FALSE, message=FALSE}
+survey_data_missing_value_handled %>% 
+  ggplot(aes(x=`Happiness in life`,  y=..prop..,  fill=factor(`Personality`))) +
+  geom_bar(position = "dodge") +
+  xlab("Happiness in life") +
+  guides(fill=guide_legend(title = "Personality"))
+```
+
+
+KKKKkK
+
+
+
+
+spearman_result <- spearman_coeeficient(survey_data)
+## Getting all the columns to which spearmen co-efficient was not calculated
+spearman_result %>%
+  filter(is.na(corelation_vector))
+## Arranging by spearmen co-efficient in descending order
+spearman_result %>%
+  arrange(desc(corelation_vector))
+```
+
+```{r  warning=FALSE, message=FALSE}
+cor.test(survey_data$Music, survey_data$`Happiness in life`, method="spearman")
+```
+
+
+
+
+
+```{r  warning=FALSE, message=FALSE}
+linear_to_linear_association_result <- linear_to_linear_association(survey_data)
+b <- linear_to_linear_association_result %>%
+  arrange(lbl_pvector) %>%
+  filter(lbl_pvector < 0.05)
+```
+
+
+```{r  warning=FALSE, message=FALSE}
+input <- table(survey_data$`Entertainment spending`, survey_data$`Happiness in life`)
+library(coin)
+LxL = lbl_test(input)
+LxL
+
+ChiSq = chisq_test(input)
+ChiSq
+```
+
+```{r  warning=FALSE, message=FALSE}
+Input =(
+"Adopt      Always  Sometimes  Never
+Size
+Hobbiest         0          1      5
+Mom-and-pop      2          3      4
+Small            4          4      4
+Medium           3          2      0
+Large            2          0      0
+")
+Tabla = as.table(read.ftable(textConnection(Input)))
+Tabla
+lbl_test(Tabla)
+```
+
+```{r  warning=FALSE, message=FALSE}
+ggplot(happiness_potential_predictor_df, aes(x=as.factor(happiness_potential_predictor_df$`Happiness in life`),  y=survey_data$Age)) +
+  geom_boxplot() + xlab("Happiness in life")
+```
+
+
+
